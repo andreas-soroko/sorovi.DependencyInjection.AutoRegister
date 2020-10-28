@@ -1,0 +1,1 @@
+# sorovi.DependencyInjection.AutoRegister
