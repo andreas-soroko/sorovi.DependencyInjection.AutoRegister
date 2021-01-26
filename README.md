@@ -20,6 +20,11 @@ just add the `RegisterServices`  and it will search for all classes in the entry
 - BackgroundService
 
 ```csharp
+[TransientService(typeof(IMyService))]
+public class MyService : IMyService { }
+```
+
+```csharp
 public void ConfigureServices(IServiceCollection serviceCollection)
 {
    
