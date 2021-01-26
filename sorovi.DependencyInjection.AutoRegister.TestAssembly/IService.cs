@@ -1,7 +1,6 @@
 namespace sorovi.DependencyInjection.AutoRegister.TestAssembly
 {
-    [Service]
-    public class WithServiceAttributeButWithoutParameter
+    public interface IService
     {
     }
 }

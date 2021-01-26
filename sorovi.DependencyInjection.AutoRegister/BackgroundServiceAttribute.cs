@@ -2,7 +2,7 @@
 
 namespace sorovi.DependencyInjection.AutoRegister
 {
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Class)]
     public class BackgroundServiceAttribute : Attribute
     {
     }
