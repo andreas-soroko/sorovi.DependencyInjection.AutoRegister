@@ -4,7 +4,12 @@
         <Version>0.1.0</Version>
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>8</LangVersion>
-        <Nullable>disable</Nullable>
+        <Authors>Andreas Soroko</Authors>
+        <Description>    </Description>
+        <Company>SOROVI</Company>
+        <PackageProjectUrl>https://github.com/andreas-soroko/sorovi.DependencyInjection.AutoRegister</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/andreas-soroko/sorovi.DependencyInjection.AutoRegister/blob/main/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/andreas-soroko/sorovi.DependencyInjection.AutoRegister</RepositoryUrl>
     </PropertyGroup>
 
     <ItemGroup>
