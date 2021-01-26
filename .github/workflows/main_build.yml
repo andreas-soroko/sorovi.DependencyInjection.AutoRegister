@@ -18,5 +18,10 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore
       - name: Test
-        run: dotnet test --no-restore --no-build -c Release --verbosity normal 
+        run: dotnet test --no-restore --no-build -c Release --verbosity normal
+      - name: Publish package
+        uses: rohith/publish-nuget@v2
+        with:
+          PROJECT_FILE_PATH: sorovi.DependencyInjection.AutoRegister/sorovi.DependencyInjection.AutoRegister.csproj
+          NUGET_KEY: ${{secrets.NUGET_API_KEY}} 
       
