@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices.ComTypes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -52,11 +51,20 @@ namespace sorovi.DependencyInjection.AutoRegister
         /// <exception cref="MissingInterfaceImplException"></exception>
         public static void RegisterServices(this IServiceCollection services, Assembly[] assemblies, Predicate<Type> predicate = null)
         {
-            if (assemblies.Length == 0)
+            if (services is null)
+            {
+                throw new ArgumentNullException(nameof(services));
+            }
+
+            var alreadyKnownAssembliesDescriptor = services.FirstOrDefault(s => s.ServiceType == typeof(AlreadyKnownAssemblies));
+            var alreadyKnownAssemblies = alreadyKnownAssembliesDescriptor?.ImplementationInstance as AlreadyKnownAssemblies ?? new AlreadyKnownAssemblies();
+
+            if (assemblies is null || assemblies.Length == 0)
                 assemblies = new[] { Assembly.GetEntryAssembly() };
 
-            var alreadyKnownTypes = services.FirstOrDefault(s => s.ServiceType == typeof(AlreadyKnownTypes));
-            var knownTypesContainer = alreadyKnownTypes?.ImplementationInstance as AlreadyKnownTypes ?? new AlreadyKnownTypes();
+            assemblies = assemblies
+                .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
+                .ToArray();
 
             var types = assemblies.SelectMany(
                     assembly =>
@@ -77,7 +85,7 @@ namespace sorovi.DependencyInjection.AutoRegister
                                            type.GetCustomAttribute<ServiceAttribute>() ??
                                            type.GetCustomAttribute<BackgroundServiceAttribute>()
                             ))
-                            .Where(typeInfo => typeInfo.Attribute != null && !knownTypesContainer.KnownTypes.Contains(typeInfo))
+                            .Where(typeInfo => typeInfo.Attribute != null)
                 )
                 .ToArray();
 
@@ -120,12 +128,12 @@ namespace sorovi.DependencyInjection.AutoRegister
                 }
             }
 
-            if (alreadyKnownTypes != null)
+            if (alreadyKnownAssembliesDescriptor != null)
             {
-                services.Remove(alreadyKnownTypes);
+                services.Remove(alreadyKnownAssembliesDescriptor);
             }
 
-            services.AddSingleton(new AlreadyKnownTypes(knownTypesContainer.KnownTypes.Concat(types).ToArray()));
+            services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
         }
 
         private static Dictionary<Mode, Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>> GetAddServiceMethods(IServiceCollection services) =>
@@ -145,18 +153,18 @@ namespace sorovi.DependencyInjection.AutoRegister
                 }
             };
 
-        private class AlreadyKnownTypes
+        private class AlreadyKnownAssemblies
         {
-            public IReadOnlyCollection<(Type Type, Attribute Attribute)> KnownTypes { get; }
+            public IReadOnlyCollection<Assembly> KnownAssemblies { get; }
 
-            public AlreadyKnownTypes()
+            public AlreadyKnownAssemblies()
             {
-                KnownTypes = Array.Empty<(Type Type, Attribute Attribute)>();
+                KnownAssemblies = Array.Empty<Assembly>();
             }
 
-            public AlreadyKnownTypes(IReadOnlyCollection<(Type Type, Attribute Attribute)> knownTypes)
+            public AlreadyKnownAssemblies(IReadOnlyCollection<Assembly> knownAssemblies)
             {
-                KnownTypes = knownTypes;
+                KnownAssemblies = knownAssemblies;
             }
         }
     }
