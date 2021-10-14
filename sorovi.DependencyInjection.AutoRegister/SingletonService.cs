@@ -1,4 +1,5 @@
 using System;
+using sorovi.DependencyInjection.AutoRegister.Common;
 
 namespace sorovi.DependencyInjection.AutoRegister
 {
