@@ -13,7 +13,7 @@ namespace sorovi.DependencyInjection.AutoRegister.Tests
 {
     public class RegisterServicesTests
     {
-        private const int EXPECTED_SERVICE_COUNT = 8; // 5 Services + KnownTypesClass
+        private const int EXPECTED_SERVICE_COUNT = 8; // 7 Services + KnownTypesClass
         private Predicate<Type> _defaultTypeFilter = type => type.Name != nameof(WithTransientServiceAttributeAndInterface);
 
         [Test]
