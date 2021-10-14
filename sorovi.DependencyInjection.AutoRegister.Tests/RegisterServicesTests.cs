@@ -13,6 +13,9 @@ namespace sorovi.DependencyInjection.AutoRegister.Tests
 {
     public class RegisterServicesTests
     {
+        private const int EXPECTED_SERVICE_COUNT = 8; // 7 Services + KnownTypesClass
+        private Predicate<Type> _defaultTypeFilter = type => type.Name != nameof(WithTransientServiceAttributeAndInterface);
+
         [Test]
         public void Should_Throw_On_Interface_Ref_Without_Impl()
         {
@@ -26,19 +29,29 @@ namespace sorovi.DependencyInjection.AutoRegister.Tests
         [Test]
         public void Should_Find_N_Services_In_Test_Assembly()
         {
-            const int services = 5;
+            var serviceCollection = GetServices();
 
-            var (_, fakeServiceCollection) = GetServices();
+            serviceCollection.Count.Should().Be(EXPECTED_SERVICE_COUNT);
+        }
 
-            A.CallTo(() => fakeServiceCollection.Add(A<ServiceDescriptor>.Ignored))
-                .MustHaveHappened(services, Times.Exactly);
+        [Test]
+        public void Should_Not_Register_Services_Twice()
+        {
+            var serviceCollection = GetServices();
+
+            serviceCollection.RegisterServices(configure => configure
+                .WithAssemblies(typeof(JustAClass).Assembly)
+                .WithTypeFilter(_defaultTypeFilter)
+            );
+
+            serviceCollection.Count.Should().Be(EXPECTED_SERVICE_COUNT);
         }
 
         [Test]
         public void Should_Add_Services_By_Their_Attributes_And_Lifetime()
         {
-            var (services, _) = GetServices();
-
+            var serviceCollection = GetServices();
+            var services = serviceCollection.ToArray();
 
             services.Should().ContainServiceWithLifetime(nameof(WithSingletonServiceAttribute), ServiceLifetime.Singleton);
             services.Should().ContainServiceWithLifetime(nameof(WithScopedServiceAttribute), ServiceLifetime.Scoped);
@@ -49,30 +62,27 @@ namespace sorovi.DependencyInjection.AutoRegister.Tests
         [Test]
         public void Should_Contain_WithTransientServiceAttributeAndInheritInterface_With_IService_Interface()
         {
-            var (services, _) = GetServices();
+            var serviceCollection = GetServices();
+            var services = serviceCollection.ToArray();
             var serviceDescriptor = services.FindByType(nameof(WithTransientServiceAttributeAndInheritInterface));
 
             serviceDescriptor.Should().NotBeNull();
             serviceDescriptor.ServiceType.Should().Be(typeof(IService));
         }
 
-        private (ServiceDescriptor[] Services, IServiceCollection fakeServiceCollection) GetServices() =>
-            GetAllServices(type => type.Name != nameof(WithTransientServiceAttributeAndInterface));
+        private IServiceCollection GetServices() =>
+            GetAllServices(_defaultTypeFilter);
 
-        private (ServiceDescriptor[] Services, IServiceCollection fakeServiceCollection) GetAllServices(Predicate<Type> typeFilter = null)
+        private IServiceCollection GetAllServices(Predicate<Type> typeFilter = null)
         {
-            var serviceCollection = A.Fake<IServiceCollection>();
-            var services = new List<ServiceDescriptor>();
-
-            A.CallTo(() => serviceCollection.Add(A<ServiceDescriptor>.Ignored))
-                .Invokes((ServiceDescriptor serviceDescriptor) => { services.Add(serviceDescriptor); });
+            var serviceCollection = new ServiceCollection();
 
             serviceCollection.RegisterServices(configure => configure
                 .WithAssemblies(typeof(JustAClass).Assembly)
                 .WithTypeFilter(typeFilter)
             );
 
-            return (services.ToArray(), serviceCollection);
+            return serviceCollection;
         }
     }
 }
