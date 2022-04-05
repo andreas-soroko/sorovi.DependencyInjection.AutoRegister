@@ -123,7 +123,10 @@ namespace sorovi.DependencyInjection.AutoRegister
                         addType(typeInfo.Type);
                         break;
                     case BackgroundServiceAttribute _:
-                        services.AddSingleton(typeof(IHostedService), typeInfo);
+                        services.AddTransient(typeof(IHostedService), typeInfo.Type);
+                        // public static IServiceCollection AddHostedService<THostedService>(this IServiceCollection services)
+                        //     where THostedService : class, IHostedService
+                        //     => services.AddTransient<IHostedService, THostedService>();
                         break;
                 }
             }
