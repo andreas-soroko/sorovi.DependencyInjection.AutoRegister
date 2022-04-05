@@ -53,10 +53,10 @@ namespace sorovi.DependencyInjection.AutoRegister.Tests
             var serviceCollection = GetServices();
             var services = serviceCollection.ToArray();
 
-            services.Should().ContainServiceWithLifetime(nameof(WithSingletonServiceAttribute), ServiceLifetime.Singleton);
-            services.Should().ContainServiceWithLifetime(nameof(WithScopedServiceAttribute), ServiceLifetime.Scoped);
-            services.Should().ContainServiceWithLifetime(nameof(WithTransientServiceAttribute), ServiceLifetime.Transient);
-            services.Should().ContainBackgroundService(nameof(WithBackgroundServiceAttribute));
+            services.Should().ContainServiceWithLifetime(typeof(WithSingletonServiceAttribute), ServiceLifetime.Singleton);
+            services.Should().ContainServiceWithLifetime(typeof(WithScopedServiceAttribute), ServiceLifetime.Scoped);
+            services.Should().ContainServiceWithLifetime(typeof(WithTransientServiceAttribute), ServiceLifetime.Transient);
+            services.Should().ContainServiceWithLifetime(typeof(WithBackgroundServiceAttribute), ServiceLifetime.Transient);
         }
 
         [Test]
