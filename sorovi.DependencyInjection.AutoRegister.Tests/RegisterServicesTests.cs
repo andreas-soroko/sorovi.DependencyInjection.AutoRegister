@@ -56,7 +56,7 @@ namespace sorovi.DependencyInjection.AutoRegister.Tests
             services.Should().ContainServiceWithLifetime(nameof(WithSingletonServiceAttribute), ServiceLifetime.Singleton);
             services.Should().ContainServiceWithLifetime(nameof(WithScopedServiceAttribute), ServiceLifetime.Scoped);
             services.Should().ContainServiceWithLifetime(nameof(WithTransientServiceAttribute), ServiceLifetime.Transient);
-            services.Should().ContainBackgroundService(nameof(WithBackgroundServiceAttribute));
+            services.Should().ContainServiceWithLifetime(nameof(WithBackgroundServiceAttribute), ServiceLifetime.Transient);
         }
 
         [Test]
