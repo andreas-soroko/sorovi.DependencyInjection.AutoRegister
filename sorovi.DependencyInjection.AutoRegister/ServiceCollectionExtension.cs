@@ -12,6 +12,8 @@ namespace sorovi.DependencyInjection.AutoRegister
 {
     public static class ServiceCollectionExtension
     {
+        private static MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
+
         private delegate void AddTypeDelegate(Type serviceType);
 
         private delegate void AddTypeWithInterfaceDelegate(Type interfaceType, Type serviceType);
@@ -123,10 +125,8 @@ namespace sorovi.DependencyInjection.AutoRegister
                         addType(typeInfo.Type);
                         break;
                     case BackgroundServiceAttribute _:
-                        services.AddTransient(typeof(IHostedService), typeInfo.Type);
-                        // public static IServiceCollection AddHostedService<THostedService>(this IServiceCollection services)
-                        //     where THostedService : class, IHostedService
-                        //     => services.AddTransient<IHostedService, THostedService>();
+                        var generic = _addHostedServiceMethodInfo.MakeGenericMethod(typeInfo.Type);
+                        generic.Invoke(null, new object[] { services });
                         break;
                 }
             }
