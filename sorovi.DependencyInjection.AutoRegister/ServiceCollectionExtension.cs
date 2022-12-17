@@ -67,26 +67,22 @@ namespace sorovi.DependencyInjection.AutoRegister
                     .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
                     .ToArray();
 
-            var types = assemblies.SelectMany(
-                    assembly =>
-                        assembly.GetExportedTypes()
-                            .Where(type =>
-                            {
-                                var defaultCondition = type.IsClass && !type.IsAbstract && !type.IsNested && !type.IsGenericType && type.CustomAttributes.Any();
-                                if (predicate is null) { return defaultCondition; }
+            var types = assemblies
+                .SelectMany(assembly => assembly.GetExportedTypes())
+                .Where(type =>
+                {
+                    var defaultCondition = type.IsClass && !type.IsAbstract && !type.IsNested && !type.IsGenericType && type.CustomAttributes.Any();
+                    if (predicate is null) { return defaultCondition; }
 
-                                return defaultCondition && predicate(type);
-                            })
-                            .Select(type => (
-                                Type: type,
-                                Attribute: (Attribute)
-                                           type.GetCustomAttribute<ServiceAttribute>() ??
-                                           type.GetCustomAttribute<BackgroundServiceAttribute>()
-                            ))
-                            .Where(typeInfo => typeInfo.Attribute != null)
-                )
-                .ToArray();
-
+                    return defaultCondition && predicate(type);
+                })
+                .Select(type => (
+                    Type: type,
+                    Attribute: (Attribute)
+                               type.GetCustomAttribute<ServiceAttribute>() ??
+                               type.GetCustomAttribute<BackgroundServiceAttribute>()
+                ))
+                .Where(typeInfo => typeInfo.Attribute != null);
 
             var serviceCollectionMethods = GetAddServiceMethods(services);
             foreach (var typeInfo in types)
@@ -96,6 +92,7 @@ namespace sorovi.DependencyInjection.AutoRegister
                     case ServiceAttribute serviceAttribute:
 
                         if (!serviceCollectionMethods.ContainsKey(serviceAttribute.Mode)) { throw new Exception($"unknown 'Mode': {serviceAttribute.Mode}"); }
+
                         if (!serviceCollectionMethods[serviceAttribute.Mode].ContainsKey(serviceAttribute.GetType())) { throw new Exception($"unknown lifetime attribute: {serviceAttribute.GetType().FullName}"); }
 
                         var (addType, addTypeWithInterface) = serviceCollectionMethods[serviceAttribute.Mode][serviceAttribute.GetType()];
