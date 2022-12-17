@@ -58,9 +58,9 @@ serviceCollection.RegisterServices(configure => configure
 > Intel Core i7-9750H CPU 2.60GHz, 1 CPU, 12 logical and 6 physical cores  
 > .NET SDK=6.0.202  
 > [Host]     : .NET 6.0.4 (6.0.422.16404), X64 RyuJIT AVX2  
-> DefaultJob : .NET 6.0.4 (6.0.422.16404), X64 RyuJIT AVX2  
+> DefaultJob : .NET 6.0.4 (6.0.422.16404), X64 RyuJIT AVX2
 
-|       Method |       Mean |   Error |  StdDev | Ratio | RatioSD |   Gen0 | Allocated | Alloc Ratio |
-|------------- |-----------:|--------:|--------:|------:|--------:|-------:|----------:|------------:|
-|  ManuallyAdd |   235.6 ns | 0.77 ns | 0.72 ns |  1.00 |    0.00 | 0.1030 |     648 B |        1.00 |
-| AutoRegister | 1,786.5 ns | 5.23 ns | 4.64 ns |  7.58 |    0.03 | 0.1297 |     824 B |        1.27 |
+|       Method |       Mean |   Error   |  StdDev  | Ratio | RatioSD |   Gen0 | Allocated | Alloc Ratio |
+|------------- |------------:|---------:|---------:|------:|--------:|-------:|----------:|------------:|
+|  ManuallyAdd |    240.9 ns |  4.58 ns |  4.70 ns |  1.00 |    0.00 | 0.1032 |    648 B  |        1.00 |
+| AutoRegister | 20,649.6 ns | 85.00 ns | 75.35 ns | 85.51 |    1.54 | 0.2441 |   1617 B  |        2.50 |
