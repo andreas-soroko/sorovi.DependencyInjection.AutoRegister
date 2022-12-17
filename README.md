@@ -62,5 +62,5 @@ serviceCollection.RegisterServices(configure => configure
 
 |       Method |       Mean |   Error |  StdDev | Ratio | RatioSD |   Gen0 | Allocated | Alloc Ratio |
 |------------- |-----------:|--------:|--------:|------:|--------:|-------:|----------:|------------:|
-|  ManuallyAdd |   235.8 ns | 0.50 ns | 0.45 ns |  1.00 |    0.00 | 0.1030 |     648 B |        1.00 |
-| AutoRegister | 5,458.1 ns | 9.50 ns | 8.89 ns | 23.15 |    0.06 | 0.4730 |    3009 B |        4.64 |
+|  ManuallyAdd |   235.6 ns | 0.77 ns | 0.72 ns |  1.00 |    0.00 | 0.1030 |     648 B |        1.00 |
+| AutoRegister | 1,786.5 ns | 5.23 ns | 4.64 ns |  7.58 |    0.03 | 0.1297 |     824 B |        1.27 |
