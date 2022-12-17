@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using FakeItEasy;
 using FluentAssertions;
-using FluentAssertions.Common;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using sorovi.DependencyInjection.AutoRegister.Exceptions;
