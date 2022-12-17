@@ -53,20 +53,19 @@ namespace sorovi.DependencyInjection.AutoRegister
         /// <exception cref="MissingInterfaceImplException"></exception>
         public static void RegisterServices(this IServiceCollection services, Assembly[] assemblies, Predicate<Type> predicate = null)
         {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
-
-            var alreadyKnownAssembliesDescriptor = services.FirstOrDefault(s => s.ServiceType == typeof(AlreadyKnownAssemblies));
-            var alreadyKnownAssemblies = alreadyKnownAssembliesDescriptor?.ImplementationInstance as AlreadyKnownAssemblies ?? new AlreadyKnownAssemblies();
+            if (services is null) { throw new ArgumentNullException(nameof(services)); }
 
             if (assemblies is null || assemblies.Length == 0)
                 assemblies = new[] { Assembly.GetEntryAssembly() };
 
-            assemblies = assemblies
-                .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
-                .ToArray();
+            var alreadyKnownAssembliesDescriptor = services.FirstOrDefault(s => s.ServiceType == typeof(AlreadyKnownAssemblies));
+            var alreadyKnownAssemblies = alreadyKnownAssembliesDescriptor?.ImplementationInstance as AlreadyKnownAssemblies ?? new AlreadyKnownAssemblies();
+
+            assemblies = alreadyKnownAssemblies.KnownAssemblies.Length == 0
+                ? assemblies
+                : assemblies
+                    .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
+                    .ToArray();
 
             var types = assemblies.SelectMany(
                     assembly =>
@@ -74,10 +73,7 @@ namespace sorovi.DependencyInjection.AutoRegister
                             .Where(type =>
                             {
                                 var defaultCondition = type.IsClass && !type.IsAbstract && !type.IsNested && !type.IsGenericType;
-                                if (predicate is null)
-                                {
-                                    return defaultCondition;
-                                }
+                                if (predicate is null) { return defaultCondition; }
 
                                 return defaultCondition && predicate(type);
                             })
@@ -99,24 +95,14 @@ namespace sorovi.DependencyInjection.AutoRegister
                 {
                     case ServiceAttribute serviceAttribute:
 
-                        if (!serviceCollectionMethods.ContainsKey(serviceAttribute.Mode))
-                        {
-                            throw new Exception($"unknown 'Mode': {serviceAttribute.Mode}");
-                        }
-
-                        if (!serviceCollectionMethods[serviceAttribute.Mode].ContainsKey(serviceAttribute.GetType()))
-                        {
-                            throw new Exception($"unknown lifetime attribute: {serviceAttribute.GetType().FullName}");
-                        }
+                        if (!serviceCollectionMethods.ContainsKey(serviceAttribute.Mode)) { throw new Exception($"unknown 'Mode': {serviceAttribute.Mode}"); }
+                        if (!serviceCollectionMethods[serviceAttribute.Mode].ContainsKey(serviceAttribute.GetType())) { throw new Exception($"unknown lifetime attribute: {serviceAttribute.GetType().FullName}"); }
 
                         var (addType, addTypeWithInterface) = serviceCollectionMethods[serviceAttribute.Mode][serviceAttribute.GetType()];
 
                         if (serviceAttribute.InterfaceType != null)
                         {
-                            if (!serviceAttribute.InterfaceType.IsAssignableFrom(typeInfo.Type))
-                            {
-                                throw new MissingInterfaceImplException(typeInfo.Type, serviceAttribute.InterfaceType);
-                            }
+                            if (!serviceAttribute.InterfaceType.IsAssignableFrom(typeInfo.Type)) { throw new MissingInterfaceImplException(typeInfo.Type, serviceAttribute.InterfaceType); }
 
                             addTypeWithInterface(serviceAttribute.InterfaceType, typeInfo.Type);
                             continue;
@@ -131,10 +117,7 @@ namespace sorovi.DependencyInjection.AutoRegister
                 }
             }
 
-            if (alreadyKnownAssembliesDescriptor != null)
-            {
-                services.Remove(alreadyKnownAssembliesDescriptor);
-            }
+            if (alreadyKnownAssembliesDescriptor != null) { services.Remove(alreadyKnownAssembliesDescriptor); }
 
             services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
         }
@@ -156,16 +139,16 @@ namespace sorovi.DependencyInjection.AutoRegister
                 }
             };
 
-        private class AlreadyKnownAssemblies
+        private sealed class AlreadyKnownAssemblies
         {
-            public IReadOnlyCollection<Assembly> KnownAssemblies { get; }
+            public Assembly[] KnownAssemblies { get; }
 
             public AlreadyKnownAssemblies()
             {
                 KnownAssemblies = Array.Empty<Assembly>();
             }
 
-            public AlreadyKnownAssemblies(IReadOnlyCollection<Assembly> knownAssemblies)
+            public AlreadyKnownAssemblies(Assembly[] knownAssemblies)
             {
                 KnownAssemblies = knownAssemblies;
             }
