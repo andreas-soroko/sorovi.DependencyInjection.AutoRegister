@@ -72,7 +72,7 @@ namespace sorovi.DependencyInjection.AutoRegister
                         assembly.GetExportedTypes()
                             .Where(type =>
                             {
-                                var defaultCondition = type.IsClass && !type.IsAbstract && !type.IsNested && !type.IsGenericType;
+                                var defaultCondition = type.IsClass && !type.IsAbstract && !type.IsNested && !type.IsGenericType && type.CustomAttributes.Any();
                                 if (predicate is null) { return defaultCondition; }
 
                                 return defaultCondition && predicate(type);
