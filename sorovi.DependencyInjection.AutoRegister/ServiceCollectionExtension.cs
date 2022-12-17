@@ -45,7 +45,7 @@ namespace sorovi.DependencyInjection.AutoRegister
         /// <param name="assemblies">Assemblies to look for the attributes, if null EntryAssembly will be used</param>
         /// <param name="predicate">Additional filter options</param>
         /// <exception cref="MissingInterfaceImplException"></exception>
-        public static void RegisterServices(this IServiceCollection services, Assembly[] assemblies, Predicate<Type> predicate = null)
+        public static void RegisterServices(this IServiceCollection services, Assembly[] assemblies, Predicate<Type> predicate)
         {
             if (services is null) { throw new ArgumentNullException(nameof(services)); }
 
