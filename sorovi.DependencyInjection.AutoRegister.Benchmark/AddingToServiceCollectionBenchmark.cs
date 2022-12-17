@@ -1,3 +1,4 @@
+using System.Reflection;
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -9,8 +10,8 @@ namespace sorovi.DependencyInjection.AutoRegister.Benchmark;
 public class AddingToServiceCollectionBenchmark
 {
     private static Predicate<Type> _defaultTypeFilter = type => type.Name != nameof(WithTransientServiceAttributeAndInterface);
-    private static Func<AutoRegisterConfigure, AutoRegisterConfigure> configure = c => c.WithTypeFilter(_defaultTypeFilter);
-    
+    private static Func<AutoRegisterConfigure, AutoRegisterConfigure> configure = c => c.WithTypeFilter(_defaultTypeFilter).WithAssemblies(typeof(JustAClass).Assembly);
+
     [Benchmark(Baseline = true)]
     public IServiceCollection ManuallyAdd()
     {
