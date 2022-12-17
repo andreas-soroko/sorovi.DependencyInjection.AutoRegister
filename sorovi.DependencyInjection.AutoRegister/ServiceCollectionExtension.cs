@@ -49,8 +49,7 @@ namespace sorovi.DependencyInjection.AutoRegister
         {
             if (services is null) { throw new ArgumentNullException(nameof(services)); }
 
-            if (assemblies is null || assemblies.Length == 0)
-                assemblies = new[] { Assembly.GetEntryAssembly() };
+            if (assemblies is null || assemblies.Length == 0) { assemblies = new[] { Assembly.GetEntryAssembly() }; }
 
             var alreadyKnownAssembliesDescriptor = services.FirstOrDefault(s => s.ServiceType == typeof(AlreadyKnownAssemblies));
             var alreadyKnownAssemblies = alreadyKnownAssembliesDescriptor?.ImplementationInstance as AlreadyKnownAssemblies ?? new AlreadyKnownAssemblies();
