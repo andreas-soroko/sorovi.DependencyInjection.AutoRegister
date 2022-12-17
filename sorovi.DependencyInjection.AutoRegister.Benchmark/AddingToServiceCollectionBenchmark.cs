@@ -9,8 +9,8 @@ namespace sorovi.DependencyInjection.AutoRegister.Benchmark;
 [MemoryDiagnoser]
 public class AddingToServiceCollectionBenchmark
 {
-    private static Predicate<Type> _defaultTypeFilter = type => type.Name != nameof(WithTransientServiceAttributeAndInterface);
-    private static Func<AutoRegisterConfigure, AutoRegisterConfigure> configure = c => c.WithTypeFilter(_defaultTypeFilter).WithAssemblies(typeof(JustAClass).Assembly);
+    private static readonly Predicate<Type> _defaultTypeFilter = type => type.Name != nameof(WithTransientServiceAttributeAndInterface);
+    private static readonly Func<AutoRegisterConfigure, AutoRegisterConfigure> _configure = c => c.WithTypeFilter(_defaultTypeFilter).WithAssemblies(typeof(JustAClass).Assembly);
 
     [Benchmark(Baseline = true)]
     public IServiceCollection ManuallyAdd()
@@ -35,7 +35,7 @@ public class AddingToServiceCollectionBenchmark
     public IServiceCollection AutoRegister()
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.RegisterServices(configure);
+        serviceCollection.RegisterServices(_configure);
         return serviceCollection;
     }
 }
