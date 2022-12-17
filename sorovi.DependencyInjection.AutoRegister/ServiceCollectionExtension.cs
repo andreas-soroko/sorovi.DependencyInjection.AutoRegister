@@ -62,11 +62,12 @@ namespace sorovi.DependencyInjection.AutoRegister
 
             var types = assemblies
                 .SelectMany(assembly => assembly.GetExportedTypes())
-                .Where(type => IsOfInterest(type) && HasRegisterAttributes(type) && (predicate is null || predicate(type)));
+                .Where(type => IsOfInterest(type) && (predicate is null || predicate(type)));
 
             foreach (var type in types)
             {
                 var attribute = type.GetCustomAttribute(typeof(ServiceAttribute)) ?? type.GetCustomAttribute(typeof(BackgroundServiceAttribute));
+                if (attribute is null) { continue; }
 
                 switch (attribute)
                 {
@@ -96,9 +97,7 @@ namespace sorovi.DependencyInjection.AutoRegister
 
             services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
         }
-
-        private static bool HasRegisterAttributes(in MemberInfo type) => type.CustomAttributes.Any() && type.GetCustomAttributes().Any(attr => attr is ServiceAttribute or BackgroundServiceAttribute);
-
+        
         private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested;
 
         private static void AddServiceDescriptor(in IServiceCollection services, in Mode mode, in ServiceDescriptor descriptor)
