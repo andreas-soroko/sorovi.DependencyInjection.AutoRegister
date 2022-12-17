@@ -68,7 +68,6 @@ namespace sorovi.DependencyInjection.AutoRegister
             foreach (var type in types)
             {
                 var attribute = type.GetCustomAttribute(_serviceAttributeType) ?? type.GetCustomAttribute(_backgroundServiceAttributeType);
-
                 switch (attribute)
                 {
                     case ServiceAttribute serviceAttribute:
@@ -95,7 +94,6 @@ namespace sorovi.DependencyInjection.AutoRegister
             }
 
             if (alreadyKnownAssembliesDescriptor != null) { services.Remove(alreadyKnownAssembliesDescriptor); }
-
             services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
         }
 
