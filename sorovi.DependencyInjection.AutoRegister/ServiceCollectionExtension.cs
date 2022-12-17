@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using sorovi.DependencyInjection.AutoRegister.Common;
 using sorovi.DependencyInjection.AutoRegister.Exceptions;
 
@@ -13,10 +11,6 @@ namespace sorovi.DependencyInjection.AutoRegister
     public static class ServiceCollectionExtension
     {
         private static readonly MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
-
-        private delegate void AddTypeDelegate(Type serviceType);
-
-        private delegate void AddTypeWithInterfaceDelegate(Type interfaceType, Type serviceType);
 
 
         /// <summary>
@@ -75,40 +69,35 @@ namespace sorovi.DependencyInjection.AutoRegister
                     if (predicate is null) { return defaultCondition; }
 
                     return defaultCondition && predicate(type);
-                })
-                .Select(type => (
-                    Type: type,
-                    Attribute: (Attribute)
-                               type.GetCustomAttribute<ServiceAttribute>() ??
-                               type.GetCustomAttribute<BackgroundServiceAttribute>()
-                ))
-                .Where(typeInfo => typeInfo.Attribute != null);
+                });
 
-            var serviceCollectionMethods = GetAddServiceMethods(services);
-            foreach (var typeInfo in types)
+            foreach (var type in types)
             {
-                switch (typeInfo.Attribute)
+                var attribute = type.GetCustomAttribute(typeof(ServiceAttribute)) ?? type.GetCustomAttribute(typeof(BackgroundServiceAttribute));
+                if (attribute is null) { continue; }
+
+                switch (attribute)
                 {
                     case ServiceAttribute serviceAttribute:
+                        if (serviceAttribute.InterfaceType is not null && !serviceAttribute.InterfaceType.IsAssignableFrom(type)) { throw new MissingInterfaceImplException(type, serviceAttribute.InterfaceType); }
 
-                        if (!serviceCollectionMethods.ContainsKey(serviceAttribute.Mode)) { throw new Exception($"unknown 'Mode': {serviceAttribute.Mode}"); }
-
-                        if (!serviceCollectionMethods[serviceAttribute.Mode].ContainsKey(serviceAttribute.GetType())) { throw new Exception($"unknown lifetime attribute: {serviceAttribute.GetType().FullName}"); }
-
-                        var (addType, addTypeWithInterface) = serviceCollectionMethods[serviceAttribute.Mode][serviceAttribute.GetType()];
-
-                        if (serviceAttribute.InterfaceType != null)
+                        var serviceLifetime = attribute switch
                         {
-                            if (!serviceAttribute.InterfaceType.IsAssignableFrom(typeInfo.Type)) { throw new MissingInterfaceImplException(typeInfo.Type, serviceAttribute.InterfaceType); }
+                            TransientServiceAttribute => ServiceLifetime.Transient,
+                            ScopedServiceAttribute => ServiceLifetime.Scoped,
+                            SingletonServiceAttribute => ServiceLifetime.Singleton,
+                            _ => throw new Exception($"unknown lifetime attribute: {attribute.GetType().FullName}")
+                        };
 
-                            addTypeWithInterface(serviceAttribute.InterfaceType, typeInfo.Type);
-                            continue;
-                        }
+                        var serviceDescriptor = serviceAttribute.InterfaceType is null
+                            ? ServiceDescriptor.Describe(type, type, serviceLifetime)
+                            : ServiceDescriptor.Describe(serviceAttribute.InterfaceType, type, serviceLifetime);
 
-                        addType(typeInfo.Type);
+                        AddServiceDescriptor(services, serviceAttribute.Mode, serviceDescriptor);
                         break;
+
                     case BackgroundServiceAttribute _:
-                        var generic = _addHostedServiceMethodInfo.MakeGenericMethod(typeInfo.Type);
+                        var generic = _addHostedServiceMethodInfo.MakeGenericMethod(type);
                         generic.Invoke(null, new object[] { services });
                         break;
                 }
@@ -119,22 +108,21 @@ namespace sorovi.DependencyInjection.AutoRegister
             services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
         }
 
-        private static Dictionary<Mode, Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>> GetAddServiceMethods(IServiceCollection services) =>
-            new Dictionary<Mode, Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>>()
+        private static void AddServiceDescriptor(IServiceCollection services, Mode mode, ServiceDescriptor descriptor)
+        {
+            switch (mode)
             {
-                [Mode.Add] = new Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>()
-                {
-                    [typeof(SingletonServiceAttribute)] = (type => services.AddSingleton(type), (type, interfaceType) => services.AddSingleton(type, interfaceType)),
-                    [typeof(ScopedServiceAttribute)] = (type => services.AddScoped(type), (type, interfaceType) => services.AddScoped(type, interfaceType)),
-                    [typeof(TransientServiceAttribute)] = (type => services.AddTransient(type), (type, interfaceType) => services.AddTransient(type, interfaceType)),
-                },
-                [Mode.TryAdd] = new Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>()
-                {
-                    [typeof(SingletonServiceAttribute)] = (services.TryAddSingleton, services.TryAddSingleton),
-                    [typeof(ScopedServiceAttribute)] = (services.TryAddScoped, services.TryAddScoped),
-                    [typeof(TransientServiceAttribute)] = (services.TryAddTransient, services.TryAddTransient),
-                }
-            };
+                case Mode.Add:
+                    services.Add(descriptor);
+                    break;
+                case Mode.TryAdd:
+                    services.TryAdd(descriptor);
+                    break;
+                default:
+                    throw new Exception($"unknown 'Mode': {mode}");
+            }
+        }
+
 
         private sealed class AlreadyKnownAssemblies
         {

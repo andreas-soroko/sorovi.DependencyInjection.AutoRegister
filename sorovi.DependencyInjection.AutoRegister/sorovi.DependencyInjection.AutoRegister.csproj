@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Version>1.0.1</Version>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <LangVersion>8</LangVersion>
+        <LangVersion>9</LangVersion>
         <Authors>Andreas Soroko</Authors>
         <Description>You are tired from adding every service to the DI Container(ASP.Net)? Great, this library is exactly what you are looking for. It searches for a couple of attributes on your classes and will add them automatically!</Description>
         <Company>SOROVI</Company>
