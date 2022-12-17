@@ -61,45 +61,56 @@ namespace sorovi.DependencyInjection.AutoRegister
                     .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
                     .ToArray();
 
-            var types = assemblies
-                .SelectMany(assembly => assembly.GetExportedTypes())
-                .Where(type => IsOfInterest(type) && (predicate is null || predicate(type)))
-                .ToArray();
 
-            foreach (var type in types)
+            foreach (var assembly in assemblies)
+            foreach (var type in assembly.GetExportedTypes())
             {
-                var attribute = type.GetCustomAttribute(_serviceAttributeType) ?? type.GetCustomAttribute(_backgroundServiceAttributeType);
-                switch (attribute)
-                {
-                    case ServiceAttribute serviceAttribute:
-                        var hasInterfaceDefined = serviceAttribute.InterfaceType is not null;
-                        if (hasInterfaceDefined && !serviceAttribute.InterfaceType.IsAssignableFrom(type)) { throw new MissingInterfaceImplException(type, serviceAttribute.InterfaceType); }
+                if (!(IsOfInterest(type) && (predicate is null || predicate(type)))) { continue; }
 
-                        var serviceLifetime = attribute switch
-                        {
-                            TransientServiceAttribute => ServiceLifetime.Transient,
-                            ScopedServiceAttribute => ServiceLifetime.Scoped,
-                            SingletonServiceAttribute => ServiceLifetime.Singleton,
-                            _ => throw new Exception($"unknown lifetime attribute: {attribute.GetType().FullName}")
-                        };
-
-                        var serviceDescriptor = ServiceDescriptor.Describe(hasInterfaceDefined ? serviceAttribute.InterfaceType : type, type, serviceLifetime);
-                        AddServiceDescriptor(services, serviceAttribute.Mode, serviceDescriptor);
-                        break;
-
-                    case BackgroundServiceAttribute:
-                        var generic = _addHostedServiceMethodInfo.MakeGenericMethod(type);
-                        generic.Invoke(null, new object[] { services });
-                        break;
-                }
+                AddTypeToServiceCollection(services, type);
             }
 
             if (alreadyKnownAssembliesDescriptor != null) { services.Remove(alreadyKnownAssembliesDescriptor); }
-            services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
+
+            services.AddSingleton(new AlreadyKnownAssemblies(
+                    alreadyKnownAssemblies.KnownAssemblies.Length == 0
+                        ? assemblies
+                        : alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()
+                )
+            );
         }
 
-        private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested && HasRegisterAttributes(type);
-        private static bool HasRegisterAttributes(in Type type) => type.IsDefined(_serviceAttributeType) || type.IsDefined(_backgroundServiceAttributeType, false);
+        private static void AddTypeToServiceCollection(in IServiceCollection services, in Type type)
+        {
+            var attribute = type.GetCustomAttribute(_serviceAttributeType, false) ?? type.GetCustomAttribute(_backgroundServiceAttributeType, false);
+            switch (attribute)
+            {
+                case ServiceAttribute serviceAttribute:
+                    var hasInterfaceDefined = serviceAttribute.InterfaceType is not null;
+                    if (hasInterfaceDefined && !serviceAttribute.InterfaceType.IsAssignableFrom(type)) { throw new MissingInterfaceImplException(type, serviceAttribute.InterfaceType); }
+
+                    var serviceLifetime = attribute switch
+                    {
+                        TransientServiceAttribute => ServiceLifetime.Transient,
+                        ScopedServiceAttribute => ServiceLifetime.Scoped,
+                        SingletonServiceAttribute => ServiceLifetime.Singleton,
+                        _ => throw new Exception($"unknown lifetime attribute: {attribute.GetType().FullName}")
+                    };
+
+                    var serviceDescriptor = ServiceDescriptor.Describe(hasInterfaceDefined ? serviceAttribute.InterfaceType : type, type, serviceLifetime);
+                    AddServiceDescriptor(services, serviceAttribute.Mode, serviceDescriptor);
+                    break;
+
+                case BackgroundServiceAttribute:
+                    _addHostedServiceMethodInfo
+                        .MakeGenericMethod(type)
+                        .Invoke(null, new object[] { services });
+                    break;
+            }
+        }
+
+        private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested;
+
 
         private static void AddServiceDescriptor(in IServiceCollection services, in Mode mode, in ServiceDescriptor descriptor)
         {

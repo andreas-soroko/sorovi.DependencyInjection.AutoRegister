@@ -60,7 +60,9 @@ serviceCollection.RegisterServices(configure => configure
 > [Host]     : .NET 6.0.4 (6.0.422.16404), X64 RyuJIT AVX2  
 > DefaultJob : .NET 6.0.4 (6.0.422.16404), X64 RyuJIT AVX2
 
-|       Method |        Mean |     Error |    StdDev |  Ratio | RatioSD |   Gen0 | Allocated | Alloc Ratio |
-|------------- |------------:|----------:|----------:|-------:|--------:|-------:|----------:|------------:|
-|  ManuallyAdd |    238.8 ns |   3.13 ns |   3.61 ns |   1.00 |    0.00 | 0.1030 |     648 B |        1.00 |
-| AutoRegister | 31,470.5 ns | 124.19 ns | 103.70 ns | 131.54 |    2.41 | 0.6714 |    4563 B |        7.04 |
+|       Method |        Mean |     Error |    StdDev | Ratio | RatioSD |   Gen0 | Allocated | Alloc Ratio |
+|------------- |------------:|----------:|----------:|------:|--------:|-------:|----------:|------------:|
+|  ManuallyAdd |    314.3 ns |   6.36 ns |   9.12 ns |  1.00 |    0.00 | 0.1030 |     648 B |        1.00 |
+| AutoRegister | 26,107.7 ns | 507.60 ns | 498.53 ns | 82.34 |    3.18 | 0.5493 |    3579 B |        5.52 |
+
+> Note: depends highly on the used assembly 
