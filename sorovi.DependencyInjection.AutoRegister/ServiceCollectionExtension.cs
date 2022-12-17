@@ -12,7 +12,7 @@ namespace sorovi.DependencyInjection.AutoRegister
 {
     public static class ServiceCollectionExtension
     {
-        private static MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
+        private static readonly MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
 
         private delegate void AddTypeDelegate(Type serviceType);
 
