@@ -11,7 +11,8 @@ namespace sorovi.DependencyInjection.AutoRegister
     public static class ServiceCollectionExtension
     {
         private static readonly MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
-
+        private static readonly Type _serviceAttributeType = typeof(SerializableAttribute);
+        private static readonly Type _backgroundServiceAttributeType = typeof(BackgroundServiceAttribute);
 
         /// <summary>
         /// Finds all classes with <see cref="TransientServiceAttribute"/>, <see cref="ScopedServiceAttribute"/>, <see cref="SingletonServiceAttribute"/>
@@ -66,13 +67,13 @@ namespace sorovi.DependencyInjection.AutoRegister
 
             foreach (var type in types)
             {
-                var attribute = type.GetCustomAttribute(typeof(ServiceAttribute)) ?? type.GetCustomAttribute(typeof(BackgroundServiceAttribute));
-                if (attribute is null) { continue; }
+                var attribute = type.GetCustomAttribute(_serviceAttributeType) ?? type.GetCustomAttribute(_backgroundServiceAttributeType);
 
                 switch (attribute)
                 {
                     case ServiceAttribute serviceAttribute:
-                        if (serviceAttribute.InterfaceType is not null && !serviceAttribute.InterfaceType.IsAssignableFrom(type)) { throw new MissingInterfaceImplException(type, serviceAttribute.InterfaceType); }
+                        var hasInterfaceDefined = serviceAttribute.InterfaceType is not null;
+                        if (hasInterfaceDefined && !serviceAttribute.InterfaceType.IsAssignableFrom(type)) { throw new MissingInterfaceImplException(type, serviceAttribute.InterfaceType); }
 
                         var serviceLifetime = attribute switch
                         {
@@ -82,11 +83,11 @@ namespace sorovi.DependencyInjection.AutoRegister
                             _ => throw new Exception($"unknown lifetime attribute: {attribute.GetType().FullName}")
                         };
 
-                        var serviceDescriptor = ServiceDescriptor.Describe(serviceAttribute.InterfaceType ?? type, type, serviceLifetime);
+                        var serviceDescriptor = ServiceDescriptor.Describe(hasInterfaceDefined ? serviceAttribute.InterfaceType : type, type, serviceLifetime);
                         AddServiceDescriptor(services, serviceAttribute.Mode, serviceDescriptor);
                         break;
 
-                    case BackgroundServiceAttribute _:
+                    case BackgroundServiceAttribute:
                         var generic = _addHostedServiceMethodInfo.MakeGenericMethod(type);
                         generic.Invoke(null, new object[] { services });
                         break;
@@ -97,8 +98,9 @@ namespace sorovi.DependencyInjection.AutoRegister
 
             services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
         }
-        
-        private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested;
+
+        private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested && HasRegisterAttributes(type);
+        private static bool HasRegisterAttributes(in Type type) => type.IsDefined(_serviceAttributeType) || type.IsDefined(_backgroundServiceAttributeType);
 
         private static void AddServiceDescriptor(in IServiceCollection services, in Mode mode, in ServiceDescriptor descriptor)
         {
