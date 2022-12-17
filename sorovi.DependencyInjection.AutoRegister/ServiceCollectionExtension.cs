@@ -11,7 +11,7 @@ namespace sorovi.DependencyInjection.AutoRegister
     public static class ServiceCollectionExtension
     {
         private static readonly MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
-        private static readonly Type _serviceAttributeType = typeof(SerializableAttribute);
+        private static readonly Type _serviceAttributeType = typeof(ServiceAttribute);
         private static readonly Type _backgroundServiceAttributeType = typeof(BackgroundServiceAttribute);
 
         /// <summary>
@@ -63,7 +63,8 @@ namespace sorovi.DependencyInjection.AutoRegister
 
             var types = assemblies
                 .SelectMany(assembly => assembly.GetExportedTypes())
-                .Where(type => IsOfInterest(type) && (predicate is null || predicate(type)));
+                .Where(type => IsOfInterest(type) && (predicate is null || predicate(type)))
+                .ToArray();
 
             foreach (var type in types)
             {
@@ -98,7 +99,7 @@ namespace sorovi.DependencyInjection.AutoRegister
         }
 
         private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested && HasRegisterAttributes(type);
-        private static bool HasRegisterAttributes(in Type type) => type.IsDefined(_serviceAttributeType) || type.IsDefined(_backgroundServiceAttributeType);
+        private static bool HasRegisterAttributes(in Type type) => type.IsDefined(_serviceAttributeType) || type.IsDefined(_backgroundServiceAttributeType, false);
 
         private static void AddServiceDescriptor(in IServiceCollection services, in Mode mode, in ServiceDescriptor descriptor)
         {
