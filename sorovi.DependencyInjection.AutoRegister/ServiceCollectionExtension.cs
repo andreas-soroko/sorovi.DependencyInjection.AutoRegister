@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using sorovi.DependencyInjection.AutoRegister.Common;
 using sorovi.DependencyInjection.AutoRegister.Exceptions;
 
@@ -13,11 +11,8 @@ namespace sorovi.DependencyInjection.AutoRegister
     public static class ServiceCollectionExtension
     {
         private static readonly MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
-
-        private delegate void AddTypeDelegate(Type serviceType);
-
-        private delegate void AddTypeWithInterfaceDelegate(Type interfaceType, Type serviceType);
-
+        private static readonly Type _serviceAttributeType = typeof(ServiceAttribute);
+        private static readonly Type _backgroundServiceAttributeType = typeof(BackgroundServiceAttribute);
 
         /// <summary>
         /// Finds all classes with <see cref="TransientServiceAttribute"/>, <see cref="ScopedServiceAttribute"/>, <see cref="SingletonServiceAttribute"/>
@@ -51,121 +46,98 @@ namespace sorovi.DependencyInjection.AutoRegister
         /// <param name="assemblies">Assemblies to look for the attributes, if null EntryAssembly will be used</param>
         /// <param name="predicate">Additional filter options</param>
         /// <exception cref="MissingInterfaceImplException"></exception>
-        public static void RegisterServices(this IServiceCollection services, Assembly[] assemblies, Predicate<Type> predicate = null)
+        public static void RegisterServices(this IServiceCollection services, Assembly[] assemblies, Predicate<Type> predicate)
         {
-            if (services is null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
+            if (services is null) { throw new ArgumentNullException(nameof(services)); }
+
+            if (assemblies is null || assemblies.Length == 0) { assemblies = new[] { Assembly.GetEntryAssembly() }; }
 
             var alreadyKnownAssembliesDescriptor = services.FirstOrDefault(s => s.ServiceType == typeof(AlreadyKnownAssemblies));
             var alreadyKnownAssemblies = alreadyKnownAssembliesDescriptor?.ImplementationInstance as AlreadyKnownAssemblies ?? new AlreadyKnownAssemblies();
 
-            if (assemblies is null || assemblies.Length == 0)
-                assemblies = new[] { Assembly.GetEntryAssembly() };
+            assemblies = alreadyKnownAssemblies.KnownAssemblies.Length == 0
+                ? assemblies
+                : assemblies
+                    .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
+                    .ToArray();
 
-            assemblies = assemblies
-                .Where(assembly => !alreadyKnownAssemblies.KnownAssemblies.Contains(assembly))
-                .ToArray();
 
-            var types = assemblies.SelectMany(
-                    assembly =>
-                        assembly.GetExportedTypes()
-                            .Where(type =>
-                            {
-                                var defaultCondition = type.IsClass && !type.IsAbstract && !type.IsNested && !type.IsGenericType;
-                                if (predicate is null)
-                                {
-                                    return defaultCondition;
-                                }
+            foreach (var assembly in assemblies)
+            foreach (var type in assembly.GetExportedTypes())
+            {
+                if (!(IsOfInterest(type) && (predicate is null || predicate(type)))) { continue; }
 
-                                return defaultCondition && predicate(type);
-                            })
-                            .Select(type => (
-                                Type: type,
-                                Attribute: (Attribute)
-                                           type.GetCustomAttribute<ServiceAttribute>() ??
-                                           type.GetCustomAttribute<BackgroundServiceAttribute>()
-                            ))
-                            .Where(typeInfo => typeInfo.Attribute != null)
+                AddTypeToServiceCollection(services, type);
+            }
+
+            if (alreadyKnownAssembliesDescriptor != null) { services.Remove(alreadyKnownAssembliesDescriptor); }
+
+            services.AddSingleton(new AlreadyKnownAssemblies(
+                    alreadyKnownAssemblies.KnownAssemblies.Length == 0
+                        ? assemblies
+                        : alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()
                 )
-                .ToArray();
-
-
-            var serviceCollectionMethods = GetAddServiceMethods(services);
-            foreach (var typeInfo in types)
-            {
-                switch (typeInfo.Attribute)
-                {
-                    case ServiceAttribute serviceAttribute:
-
-                        if (!serviceCollectionMethods.ContainsKey(serviceAttribute.Mode))
-                        {
-                            throw new Exception($"unknown 'Mode': {serviceAttribute.Mode}");
-                        }
-
-                        if (!serviceCollectionMethods[serviceAttribute.Mode].ContainsKey(serviceAttribute.GetType()))
-                        {
-                            throw new Exception($"unknown lifetime attribute: {serviceAttribute.GetType().FullName}");
-                        }
-
-                        var (addType, addTypeWithInterface) = serviceCollectionMethods[serviceAttribute.Mode][serviceAttribute.GetType()];
-
-                        if (serviceAttribute.InterfaceType != null)
-                        {
-                            if (!serviceAttribute.InterfaceType.IsAssignableFrom(typeInfo.Type))
-                            {
-                                throw new MissingInterfaceImplException(typeInfo.Type, serviceAttribute.InterfaceType);
-                            }
-
-                            addTypeWithInterface(serviceAttribute.InterfaceType, typeInfo.Type);
-                            continue;
-                        }
-
-                        addType(typeInfo.Type);
-                        break;
-                    case BackgroundServiceAttribute _:
-                        var generic = _addHostedServiceMethodInfo.MakeGenericMethod(typeInfo.Type);
-                        generic.Invoke(null, new object[] { services });
-                        break;
-                }
-            }
-
-            if (alreadyKnownAssembliesDescriptor != null)
-            {
-                services.Remove(alreadyKnownAssembliesDescriptor);
-            }
-
-            services.AddSingleton(new AlreadyKnownAssemblies(alreadyKnownAssemblies.KnownAssemblies.Concat(assemblies).ToArray()));
+            );
         }
 
-        private static Dictionary<Mode, Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>> GetAddServiceMethods(IServiceCollection services) =>
-            new Dictionary<Mode, Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>>()
-            {
-                [Mode.Add] = new Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>()
-                {
-                    [typeof(SingletonServiceAttribute)] = (type => services.AddSingleton(type), (type, interfaceType) => services.AddSingleton(type, interfaceType)),
-                    [typeof(ScopedServiceAttribute)] = (type => services.AddScoped(type), (type, interfaceType) => services.AddScoped(type, interfaceType)),
-                    [typeof(TransientServiceAttribute)] = (type => services.AddTransient(type), (type, interfaceType) => services.AddTransient(type, interfaceType)),
-                },
-                [Mode.TryAdd] = new Dictionary<Type, (AddTypeDelegate addType, AddTypeWithInterfaceDelegate addTypeWithInterface)>()
-                {
-                    [typeof(SingletonServiceAttribute)] = (services.TryAddSingleton, services.TryAddSingleton),
-                    [typeof(ScopedServiceAttribute)] = (services.TryAddScoped, services.TryAddScoped),
-                    [typeof(TransientServiceAttribute)] = (services.TryAddTransient, services.TryAddTransient),
-                }
-            };
-
-        private class AlreadyKnownAssemblies
+        private static void AddTypeToServiceCollection(in IServiceCollection services, in Type type)
         {
-            public IReadOnlyCollection<Assembly> KnownAssemblies { get; }
+            var attribute = type.GetCustomAttribute(_serviceAttributeType, false) ?? type.GetCustomAttribute(_backgroundServiceAttributeType, false);
+            switch (attribute)
+            {
+                case ServiceAttribute serviceAttribute:
+                    var hasInterfaceDefined = serviceAttribute.InterfaceType is not null;
+                    if (hasInterfaceDefined && !serviceAttribute.InterfaceType.IsAssignableFrom(type)) { throw new MissingInterfaceImplException(type, serviceAttribute.InterfaceType); }
+
+                    var serviceLifetime = attribute switch
+                    {
+                        TransientServiceAttribute => ServiceLifetime.Transient,
+                        ScopedServiceAttribute => ServiceLifetime.Scoped,
+                        SingletonServiceAttribute => ServiceLifetime.Singleton,
+                        _ => throw new Exception($"unknown lifetime attribute: {attribute.GetType().FullName}")
+                    };
+
+                    var serviceDescriptor = ServiceDescriptor.Describe(hasInterfaceDefined ? serviceAttribute.InterfaceType : type, type, serviceLifetime);
+                    AddServiceDescriptor(services, serviceAttribute.Mode, serviceDescriptor);
+                    break;
+
+                case BackgroundServiceAttribute:
+                    _addHostedServiceMethodInfo
+                        .MakeGenericMethod(type)
+                        .Invoke(null, new object[] { services });
+                    break;
+            }
+        }
+
+        private static bool IsOfInterest(in Type type) => type.IsClass && !type.IsAbstract && !type.IsGenericType && !type.IsNested;
+
+
+        private static void AddServiceDescriptor(in IServiceCollection services, in Mode mode, in ServiceDescriptor descriptor)
+        {
+            switch (mode)
+            {
+                case Mode.Add:
+                    services.Add(descriptor);
+                    break;
+                case Mode.TryAdd:
+                    services.TryAdd(descriptor);
+                    break;
+                default:
+                    throw new Exception($"unknown 'Mode': {mode}");
+            }
+        }
+
+
+        private sealed class AlreadyKnownAssemblies
+        {
+            public Assembly[] KnownAssemblies { get; }
 
             public AlreadyKnownAssemblies()
             {
                 KnownAssemblies = Array.Empty<Assembly>();
             }
 
-            public AlreadyKnownAssemblies(IReadOnlyCollection<Assembly> knownAssemblies)
+            public AlreadyKnownAssemblies(in Assembly[] knownAssemblies)
             {
                 KnownAssemblies = knownAssemblies;
             }
