@@ -10,9 +10,18 @@ namespace sorovi.DependencyInjection.AutoRegister
 {
     public static class ServiceCollectionExtension
     {
-        private static readonly MethodInfo _addHostedServiceMethodInfo = typeof(ServiceCollectionHostedServiceExtensions).GetMethod(nameof(ServiceCollectionHostedServiceExtensions.AddHostedService));
         private static readonly Type _serviceAttributeType = typeof(ServiceAttribute);
         private static readonly Type _backgroundServiceAttributeType = typeof(BackgroundServiceAttribute);
+
+        private static readonly MethodInfo _addHostedServiceMethodInfo =
+            typeof(ServiceCollectionHostedServiceExtensions)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static
+                )
+                .FirstOrDefault(s => s.IsGenericMethod &&
+                                     s.Name == nameof(ServiceCollectionHostedServiceExtensions.AddHostedService) &&
+                                     s.GetParameters().Length == 1 &&
+                                     s.GetParameters()[0].ParameterType == typeof(IServiceCollection)
+                );
 
         /// <summary>
         /// Finds all classes with <see cref="TransientServiceAttribute"/>, <see cref="ScopedServiceAttribute"/>, <see cref="SingletonServiceAttribute"/>
@@ -82,7 +91,8 @@ namespace sorovi.DependencyInjection.AutoRegister
 
         private static void AddTypeToServiceCollection(in IServiceCollection services, in Type type)
         {
-            var attribute = type.GetCustomAttribute(_serviceAttributeType, false) ?? type.GetCustomAttribute(_backgroundServiceAttributeType, false);
+            var attribute = type.GetCustomAttribute(_serviceAttributeType, false) ??
+                            type.GetCustomAttribute(_backgroundServiceAttributeType, false);
             switch (attribute)
             {
                 case ServiceAttribute serviceAttribute:
@@ -102,6 +112,11 @@ namespace sorovi.DependencyInjection.AutoRegister
                     break;
 
                 case BackgroundServiceAttribute:
+                    if (_addHostedServiceMethodInfo is null)
+                    {
+                        throw new ArgumentNullException(nameof(_addHostedServiceMethodInfo));
+                    }
+
                     _addHostedServiceMethodInfo
                         .MakeGenericMethod(type)
                         .Invoke(null, new object[] { services });
