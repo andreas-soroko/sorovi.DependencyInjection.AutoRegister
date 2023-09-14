@@ -10,6 +10,7 @@
         <PackageProjectUrl>https://github.com/andreas-soroko/sorovi.DependencyInjection.AutoRegister</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/andreas-soroko/sorovi.DependencyInjection.AutoRegister/blob/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/andreas-soroko/sorovi.DependencyInjection.AutoRegister</RepositoryUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -17,4 +18,8 @@
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="2.1.1" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="../README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+    
 </Project>
