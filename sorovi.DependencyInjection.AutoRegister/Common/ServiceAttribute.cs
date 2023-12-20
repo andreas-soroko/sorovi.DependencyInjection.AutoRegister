@@ -8,11 +8,11 @@ namespace sorovi.DependencyInjection.AutoRegister.Common
         public Type InterfaceType { get; set; }
         public Mode Mode { get; set; } = Mode.TryAdd;
 
-        public ServiceAttribute()
+        protected ServiceAttribute()
         {
         }
 
-        public ServiceAttribute(Type interfaceType)
+        protected ServiceAttribute(Type interfaceType)
         {
             InterfaceType = interfaceType;
         }

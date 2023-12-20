@@ -14,4 +14,14 @@ namespace sorovi.DependencyInjection.AutoRegister
         {
         }
     }
+
+#if NET8_0_OR_GREATER
+    public class ScopedServiceAttribute<TServiceType> : ScopedServiceAttribute
+    {
+        public ScopedServiceAttribute()
+            : base(typeof(TServiceType))
+        {
+        }
+    }
+#endif
 }
